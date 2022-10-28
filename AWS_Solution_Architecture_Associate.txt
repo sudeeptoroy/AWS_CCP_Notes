@@ -1161,17 +1161,70 @@ There is no charge for creating a placement group" and "The name of your placeme
 * Database 101
 ==========================================================================================================================================================================================
 
+Amazon RDS Overview:
+    - managed DB service for DB use SQL as query language.
+        - automatic provisioning, OS patching
+        - continous backup and restore
+        - monitoring dashboard
+        - read replicas
+        - multi AZ setup for DR
+        - Maintanance window for upgrades
+        - scaling capability
+        - storage backed by EBS ( gp2 or io1)
+
+    RDS - Storage Auto Scaling
+        - Helps to increase storage on RDS DB instance dynamically
+        - Max storage threshold need to be set
+        - automatically modifies storage if
+            - free storage is < 10 %
+            - low-storage last at least 5 mins
+            - 6 hours have passed since last modification
+
 	1. Relational databases on AWS - RDS: (Exam Tips)
-		1.1 SQL Server
+		1.1 SQL Server ( Microsoft )
 		1.2 Oracle
 		1.3 Postgres
 		1.4 MySQL
-		1.5 Aurora
-		1.6 MariaDB
+		1.5 MariaDB
+		1.6 Aurora
 
 	2. Exam Tips: RDS has two features
 		2.1 Multi-AZ - For DR
 		2.2 Read Replicas - For performance (Allows 5 copies of read replica)
+
+        read replicas for read scalability 
+        - upto 5 read replicas
+        - within AZ, cross AZ, cross region
+        - replication is ASYNC, reads are eventually consistance
+        - replicas can be promoted to their own DB
+
+        eg: reporting application needs data to work on, create a replicas
+        n/w cost:
+        - read replicas on the same region is free and other region is not free
+
+        RDS Multi-AZ ( DR )
+        - Sync replication
+        - One DNS name - automatic app failover to standby
+        - increase availablity
+        - failover in case of loss of AZ
+        - Not used for scaling
+
+        - read replicas can be installed multi-AZ for DR ( possible, common
+          exam question )
+
+        how to promote a RDS from single AZ to multiple AZ
+        - zero downtime operation
+        - click on modify DB and enable multi AZ
+
+    RDS custom
+    you get to cutomize OS and Database custimization ( Admin access )
+    - Oracle
+    - Microsoft SQL
+    We can 
+    - Configure, Install patch, enable native features, access to Underline EC2
+      via SSH and SSM session manager
+    - while doing any changes you should disable automatic mode and take
+      snapshot
 
 	3. Non Relational Databases (JSON/No SQL) called DynamoDB
 		3.1 Collection = Table, Document = Row and "Key Value pairs" = Fields.
@@ -1249,6 +1302,8 @@ There is no charge for creating a placement group" and "The name of your placeme
 		- You can create read replicas of Multi-AZ source databases.
 		- Read replicas can be promoted to be their own databases. This breaks the replication.
 		- You can have a read replica in a second region.
+
+    - RDS Multi - AZ uses sync replication
 
   Exam Tips:
 	1. There are two different types of Backups for RDS
@@ -1412,9 +1467,20 @@ There is no charge for creating a placement group" and "The name of your placeme
 	2. Amazon Aurora provides up to 5x better performance than MySQL and 3x better performance than PostgreSQL databases at a much lower price point, whilst delivering similar performance and availability.
 	
 	3. Things to know about Aurora
-		- Start with 10Gb, Scales in 10 GB increments to 64 TB (Storage Autoscaling)
+		- Start with 10Gb, Scales in 10 GB increments to 128 TB (Storage Autoscaling)
 		- Compute resources can scale up tp 32vCPUS and 244GB of Memory
 		- 2 copies of your data is contained in each availability zone, with minimum of 3 availability zones. 6 copies of your data.
+        - 6 copies of data across 3 AZ
+            - 4 copies out of 6 needed for write
+            - 3 copies out of 6 needed for read
+        - self healing with peer ro per replicaiton
+        - storage is striped across 100s of volumes
+        - master + 15 read replicas
+        - master takes the read
+        - support for cross region replication
+        - aws provide write endpoint ( DNS ) points to master
+        - reader endpoint - connection LB - has auto scaling for readers
+        - all master and reader have a shared storage volume ( 10 G to 128 TB )
 	
 	4. Scaling Aurora
 		- Aurora is designed to transparently handle the loss of up to two copies of data without affecting database write availability and up to three copies without affecting read availability.
@@ -1424,6 +1490,9 @@ There is no charge for creating a placement group" and "The name of your placeme
 		1. Aurora Replicas (currently 15)
 		2. MySQL Read Replicas (currently 5)
 		3. PostgreSQL (currently 1)
+        4. sub 10 ms replica lag
+
+    aurora cost more than RDS ( 20 % more)
 		
 	6. What kind of replicas does Aurora support? on https://aws.amazon.com/rds/aurora/faqs/
 	
@@ -1431,12 +1500,90 @@ There is no charge for creating a placement group" and "The name of your placeme
 		- Automated backups are always enabled on Amazon Aurora DB Instances. Backups do not impact performance.
 		- You can also take snapshots with Aurora. This also does not impact on performance.
 		- You can share Aurora snapshots with other AWS accounts
+    RDS backup
+    ---------
+        - Automated backup:
+            - Daily full backup if the DB ( during maintenance window )
+            - tranaction logs are backed up by RDS every 5 min
+            - ability to restore to any point in time
+            - 1 to 35 days of retention, set 0 to disable auto backup
+
+        - manual DB
+            - manually triggered by user
+            - relention of back up as the user want
+
+        trick: stopped RDS cost for storage so better take snapshot and restore
+when done.
+
+    Aurora backup
+    -------------
+        - automated backups
+            -  1 to 35 days cannot be disabled
+            - point in time recovery 
+
+
+    RDS & Aurora Restore option
+        - restoring of RDS backup and snapshot creates a new db
+
+        - restoring MySQL RDS db from S3
+            - create a backup of your on-premises db
+            - store it on Amazon S3 ( object store)
+            - restore backup fil into new RDS instance running MySQL
+        - restoring MySQL Aurora cluster from S3
+            - create backup to on-primise db using Percona ZtraBackup
+            - Store to backup fole on Amazon S3
+            - restore the backup into a new Aurura Cluster running MySQL
+
+    Aurora DB cloning
+        - create a new aurora db from existing one
+        - faster then snapshot & restore
+        - new DB clusere use the same cluster volume and data as the orig
+        - fast and cost effetive
+        - useful to create a staging db from a prod db without impacting prod
+          db
 		
 	8. Amazon Aurora Serverless is an on-demand, autoscaling configuration for the MYSQL-compatible and PostgreSQL-compatible editions of Amazon Aurora.
     -  An Aurora Serverless DB cluster automatically starts up, shuts down, and scales capacity up or down based on your application's needs.
 
 	9. Amazon Aurora Serverless provides a relatively simple cost-effective option for infrequent, intermittent, or unpredictable workloads.   
-	  
+
+	Features of Aurora
+    - automatic fail-over
+    - backup and recovery
+    - isolation and security
+    - industry compliance
+    - push button scaling
+    - automated patching with zero downtime
+    - advance monitoring
+    - routine maintenance
+    - backtrack: restore data to any point of time without backups
+
+    Advance concepts
+    - 
+
+
+    RDS and Aurora security:
+    - at-rest encryption
+        - AWS KMS should be enabled at launch time
+        - if master is not encrypted, reader cannot be encrypted too
+        - to encrypt an un-encrypted db, use the DB snapshot and restore as
+          encryption process
+    - In-flight encryption
+    - IAM auth
+    - security groups
+    - enable audit logs, send to cloud watch
+
+    Amazon RDS proxy:
+        - fully managed proxy
+        - allow app to pool and shared DB connections estabilished with the DB
+        - Improved DB efficiency by reducing the stress pn DB rsources and
+          minimize open connections ( timeouts )
+        - serverless, authscaling, highly available ( multi- az )
+        - reduce RDs and Aurora failover time by up 66%
+        - supports RDS( MySQL, PostgreSQL, MariaDB) and Aurora ( MySQL,
+          PostgreSQL)
+        - RDS proxy is never publicly accessible ( only via VPC )
+
    Exam Tips:
    	- 2 copies of your data is contained in each availability zone, with minimum of 3 availability zones. 6 copies of your data.
 		- You can share Aurora snapshots with other AWS accounts
@@ -1469,6 +1616,70 @@ There is no charge for creating a placement group" and "The name of your placeme
 	4. Redis is Multi-AZ
 	
 	5. You can do backups and restores of Redis.	   
+
+    Elastic cache:
+    - Same as RDS - managed
+    - Redis or Memcached
+    - caches are in-mem db with high performance and low latency
+    - help reduce load off a DS for read intensive workload
+    - helps make app stateless
+    - using elastic cache involes app code change
+
+    redis and memcache
+    Redis:
+    Multi AZ with auto failover
+    read replicas to scale read and have high availability
+    data durability using AOF persistance
+    backup and restore feature
+
+    memcached:
+    multi-node for partitioning of data ( sharding )
+    no high availability
+    non persistent
+    no backup an restore
+    multi-threaded arch
+
+    Elastic Cache - cache security
+    - All cache in Elastic Cache
+        - do no support IAM auth
+        - IAM policy on Elastic cache are only used for AWS api-level security
+
+    redis auth:
+        - set pass/token when creating redis cluser
+        - extra level of security for your cache
+        - support SSL in fligh encryption
+    Memcached
+        - Supports SASL based auth ( adv )
+
+    Pattern for elastic cache
+    - lazy loading: all data in cache, data can become stale in cache
+    - write through: add and update data in the cache when written to DB ( no
+      stale data)
+    - session data: store temp session data in cache using TTL feature
+
+
+    use cases:  
+        - Gaming leaderbaord
+        - redis sorted sets : guarantee both uniqueness and element ordering
+        - each time element is added , its ranked in real time and added in
+          correct order
+
+    Important ports:
+        FTP: 21
+        SSH: 22
+        SFTP: 22 (same as SSH)
+        HTTP: 80
+        HTTPS: 443
+        
+        vs RDS Databases ports:
+        PostgreSQL: 5432
+        MySQL: 3306
+        Oracle RDS: 1521
+        MSSQL Server: 1433
+        MariaDB: 3306 (same as MySQL)
+        Aurora: 5432 (if PostgreSQL compatible) or 3306 (if MySQL compatible)
+
+
 		
 ** Database Migration Service
 	
@@ -1807,7 +2018,81 @@ There is no charge for creating a placement group" and "The name of your placeme
 * DNS 101 (4-5 questions in the exam)
 ==========================================================================================================================================================================================
 
+    DNS Terminologies:
+    - Domain Register: amazon Route 53. GoDaddy
+    - DNS records: A, AAAA, CNAME, NS
+    - Zone files: contains DNS records
+    - Name server: resolves DNS queries ( Authoritative or Non-Authoritative)
+    - top level domain ( TLD ): com, .us. .gov, .org,...
+    - Second level domain ( SLD): amazon.com, google.com
+
+
+    fqdn: http://api.www.example.com.
+    .: root
+    .com: TLD
+    .example.com: SLD
+    .www.example.com: sub Domain
+    api.www.example.com: domain name
+    http: protocol
+
   ** Route53 Exam Tips
+        - fully managed and authoritatice DNS ( user can update the DNS record)
+        - Domain registrar
+
+    Record types:
+    a: maps a hostname to IPv4
+    AAAA: maps a hostname to IPv6
+    CNAME: maps a hostname to another hostname
+        - target is a domain name which must have a A or AAAA record
+        - Cant create a CNAME record for the top node of a DNS namespace ( zone
+          Apex)
+        - Example: you cannot create for example.com but you can for
+          www.example.com
+    NS: Name server for the Hosted Zone
+        - controls how the traffic for a domain
+    
+
+    rotue 53 - hosted zone:
+    - container for recoreds that define how the route traffic to a domain and
+      its subdomains
+    
+    - public hosted zone
+    - private hosted zone
+
+    pay 0.5$ per month per hosted zone
+
+    Cname and Alias
+    cname: points a hostname to another hostname ( app.mydomain.com ->
+blabla.anything.com)
+    alias:
+        - points a hostname to an AWS Resource ( app.mydomain.com ->
+          blabla.amazonaws.com )
+        - works for root domain and non root domain
+        - free of charge
+        - native health check are there
+    
+    route 53 - alias
+        - maps a hostnameto a aws resource
+        - extends DNS functionality
+        - automatic recognizes changes in the resourse IP address
+        - Unlike cname, it can be used for top node of DNS namespace. eg:
+          example.com
+        - alias record is always of type A/AAAA for AWS resources ( ipv4/6 )
+        - u cannot set TTL
+
+    alias target can be:
+        - ELB
+        - Cloud front distribution
+        - API Gateway
+        - Elastic Beanstalk env
+        - S3 website
+        - VPC interface endpoint
+        - Global Accelerartor accelerator
+        - route 53 record in the same hosted zone
+
+        - you cannot set a alias for EC2 DNS name
+
+     
 	
 		- ELB's do not have a pre-defined IPv4 addresses, you resolve them using a DNS name 
 		- Understand the difference between an Alias Record and a CNAME.
@@ -1829,8 +2114,9 @@ There is no charge for creating a placement group" and "The name of your placeme
 			- Weighted Routing
 			- Latency-based Routing
 			- Failover Routing
-			- Geolocation Routing
-			- Geoproximity Routing (Traffic Flow Only)
+			- Geolocation Routing ( where is user is located )
+			- Geoproximity Routing (Traffic Flow Only, based on user and
+			  resource)
 			- Multivalue Answer Routing
 			
   ** Route 53 Simple Routing Policy - LAB
@@ -1842,10 +2128,42 @@ There is no charge for creating a placement group" and "The name of your placeme
 		  	For Example: you can set 10% of your traffic to go to US-EAST-1 and 90% to EU-WEST-1.
 		 
 		Health Checks
+        -------------
+             - HTTP health check are only for public resources
 			 - You can set health checks on individual record sets.
 			 - If a recordset fails a health check it will be removed from Route53 until it passes the health check.
 			 - You can also set SNS notifications to alert you if a health check is failed.
-		  
+        health check:
+            - used for automated DNS failover
+         types of health checks
+            - Health check that monitor an endpoint
+            - Health checks that monitor other health checks - Calculated
+              health check
+            - Health check that monitors CloudWatch alarm ( full control ),
+              throttles of Dynamo, alarm on RDS, custom metrics, private
+resources
+
+        - monitor an endpoint
+            About 15 global health checkes all around the world to eheck the
+endpoint.
+            - healthy/Unhealthy threshold - 3 default
+            - interval - 30 sec ( can be 10 sec - higher cost )
+            - supported protocol: http, https, TCP
+            - if > 18% of health checkes reports the endpoint is healthy then
+              its healthy
+            health check passes only for 2xx or 3xx
+            health checks can be setup to pass and fail based on text in the
+first 5120 bytes of the response
+
+
+        - calculated health checks
+            combines results of multiple health checks into one
+            can monitor 256 child health checks
+            specify hot many health checks need to pass to make parent health
+check pass
+            usage: perform maintenace to your website without causing all
+health checks to fail.
+
   ** Route 53 Latency-Based Routing Policy - LAB
   		- Allows you to route your traffic based on the lowest network latency for your end user (ie which region will give them the fastest response time)
 			- To use latency-based routing, you create a latency resource record set for the Amazon EC2 (or ELB) resource in each region that hosts your website.
@@ -1864,6 +2182,11 @@ There is no charge for creating a placement group" and "The name of your placeme
   ** Route 53 Geoproximity Routing Policy - LAB (beyond the scope of SAA exam and SAP exam)
   		- Geoproximity Routing lets Amazon Route 53 route traffic to your resources based on the geographic location of your users and your resources. You can also optionally choose to route more traffic or less to a given resource by specifying a value, known as a bias. A bias expands or shrinks the size of the geographic region from which traffic is routed to a resource.
 		- To use Geoproximity Routing, you must use Route 53 traffic flow.		  
+        - bias 1 to 99 ( more traffic ) or -1 to -99 ( shrink )
+        - resources can be 
+            - AWS resources ( specify AWS region )
+            - Non - AWS resources ( specify Lattitude or Longitude )
+        - must use route 53 traffic flow ( advance ) to use this feature 
 		  
   ** Route 53 Multivalue Answer Routing Policy - LAB
         - Multivalue Answer Routing lets you configure Amazon Route 53 to return multiple values, such as IP addresses for your web servers, in response to DNS queries.
@@ -2326,12 +2649,55 @@ There is no charge for creating a placement group" and "The name of your placeme
 * HA Architecture (10 questions on Load balancers)
 ==========================================================================================================================================================================================
 	** Elastic Load Balancers - Exam Tips
-		- Application Load Balancer (HTTP and HTTPS) - Layer 7 aware (make intelligent decisions/routing).
+		- Application Load Balancer (HTTP and HTTPS, supports HTTP/2 and
+		  Websocket, gRPC) - Layer 7 only (make intelligent decisions/routing).
+          routing based on
+            - path
+            - hostname
+            - Query string, Headers
+            - source IP
+          suports redirects from http to https
+          great fit for micro service, container based app
+          target groups
+            - EC2 instances
+            - ECS task
+            - Lambda
+            - IP address ( must be private )
+          ALB can route to multiple groups
+          Health check are at target group level
+          fixed hostname - xxx.region.elb.amazonaws.com
+          clients IP, port and proto to put into X-forwared-(for/Port/Proto)
+          DuelStack possible
 		- Network Load Balancer (TCP, TLS and UDP) - Extreme Performance/Static IP Addresses.
-		- Classic Load Balancer (PREVIOUS GENERATION for HTTP, HTTPS, and TCP) - Test & Dev to keep costs low.
+          Less latency ~ 100 ms ( vs 400 ms for ALB )
+          has one static IP per AZ and supports assigning Elastic IP ( helpful
+for whitelisting specific IP)
+          target group:
+          EC2
+          IP Address ( private IP )
+          App Load Balance
+          health check ( TCP, HTTP, HTTPS protocols)
+          The traffic to backend will look like its coming from Internet ( not
+like ALB)
+		- Classic Load Balancer (PREVIOUS GENERATION for HTTP, HTTPS, and TCP).
+		  Test & Dev to keep costs low.
+          Health checks are TCP and HTTP based.
+          fixed hostname: XXX.region.elb.amazonaws.com.
+          Ipv6 is mostly not supported
+          supoprts only one SSL cert, must use multiple CLB for multiple hostname with multiple SSL cert
+
 		- 504 Error means that the gateway has timed out. This means that the application not responding within the idle timeout period.
 		- Troubleshoot the application to figure out App/DB layer to scale it out or up.  
 		- If you need the IPv4 address of your end user, look for the X-Forwarded-For header.
+        - Gateway Load Balancer
+          A way to integrate 3rd party network virtual applicance.
+          Firewall, Intrusion Detection and prevention system, Deep packet
+inspection, payload manipulation
+          ( almost like ext-auth in envoy )
+          works at Layer 4
+          Transparent Network gw + LB
+          Uses Geneve protocol - port 6081
+          Target group: EC2 instance, IP Address ( private Ips only )
 		
 	** Load Balancers and Health Checks
 		- Instances monitored by ELB are reported as; InService, or OutofService
@@ -2342,6 +2708,22 @@ There is no charge for creating a placement group" and "The name of your placeme
 	
 	** Advanced Load Balancers Theory
 		1. Sticky Sessions: 
+            Works for classic and App LB
+            Cookie is uses
+            - App  based cookie
+                - Custom Cookie
+                    - generated by target, can have any attributes
+                    - cookie name must be specified individually for each
+                      target group
+                    - AWSALB, AWSALBAPP, AWSALBTG ( do not use, as they are
+                      reserved by ELB)
+                - Application Cookie
+                    - generated by LB with name: AWSALBAPP
+            - Duration bases cookie
+                - generated by LB
+                - Cookie name: AWSALB for ALB and AWSELB for CLB
+                
+            - application Cookie
 			Classic Load Balancer routes each request independently to the registered EC2 instance with the smallest load.
 			Sticky sessions allow you to bind a user's session to a specific EC2 instance. This ensures that all requests from the user during the session are sent to the same instance.
 		
@@ -2354,6 +2736,15 @@ There is no charge for creating a placement group" and "The name of your placeme
 
 		2. Cross Zone Load Balancing:
 			Enables you to load balance across multiple AZ's
+            - App LB
+                - Always on ( cannot be diabled )
+                - no charge for inter AZ data
+            - Network LB
+                - Disable by default
+                - you pay charge for inter AZ data if enabled
+            - Classic LB
+                - Disabled by default
+                - no charge for inter AZ data if enabled
 			
 			Exam Scenario 1: 
 				With No Cross Zone Load Balancing, we got a user and we are using Route 53 for our DNS, which is splitting of our traffic 50/50 and sending the requests to EC2's in two diff AZ's
@@ -2379,20 +2770,80 @@ There is no charge for creating a placement group" and "The name of your placeme
 				
 				www.myurl.com should go to AZ1 and www.myurl.com/images should go to the media instances in AZ2. In this instance, we enable Path Patterns.
 				
+        4. LB SSL
+            the certs are managed by ACM ( AWS Cert manager )
+            certs can be uploaded too
+            Https listerner:
+            - specify default cert
+            - optional list of certs to support multiple domain
+            - clients SNI is used to specify the host they want to reach
+            SNI:
+                - loading of multiple certs in one web server
+                - used by ALB or NLB, Cloud Front
+                - not with CLB ( only support one cert )
+        5. Connection Draining
+            CLB : Connection draining
+            ALB and NLB: Deregistration Delay - ALB and NLB
+            - time to complete "in-flight req" while the instance(Ec2) is
+              de-registering or unhealthy
+            - Stop sending new req to the EC2 instance which is de-regisered
+            - configure between 1 - 3600 sec ( def 300 sec), disable if 0
 	** Auto Scaling (3 to 4 questions)
+        Goal:
+        - scale out or in
+        - ensure min or max no of EC2
+        - automatic register ew instance to LB
+        - recreate a prev terminated EC2 instance
 		
-		Auto Scaling group: Min size, Desired Capacity, Max Size and Scale out as needed
+		Auto Scaling group: (Min size, Desired Capacity, Max Size) + scaling policy
+        Auto scaling can heppen with Cloud watch alerm and scaling. eg: Av CPU
+or custom metric
+        bases on alarm ASG can scale-out ot scale-in
 		
 		Auto Scaling has 3 components
 		
 		1. Groups: Logical component, Webserver group or Application group or DB group ... etc. 
 		
-		2. Configuration Templates: Group uses a launch template or a launch configuration as a configuration template for its EC2 instances. 
+		2. Launch Templates: Group uses a launch template or a launch configuration as a configuration template for its EC2 instances. 
 		   You can specify information such as the AMI ID, instance type, key pair, security groups and block device mapping for your instances.
+           Launch Template ( Configurations is deprecated )
+       	    - Create a Launch Configuration and then use Launch Configuration during Auto Scaling Group creation
+       	    - During Auto Scaling - there is warmup of 300 secs for new instances
+           A Launch template has:
+           - AMI + Instance type
+           - EC2 User data
+           - EBS Volume
+           - Security Group
+           - SSH Key pair
+           - IAM roles for EC2 instance
+           - n/w + subnet
+           - LB info
 		
 		3. Scaling Options: Scaling Options provides several ways for you to scale your Auto Scaling groups.
 		   For Example: you can configure a group to scale based on the occurence of specified conditions (dynamic scaling) or on a schedule.   
-		
+
+        auto scaling groups - scaling policy
+        - dynamic scaling policy
+            - target tracking scaling eg; maintain 40% CPU all the time
+            - simple / step scaling: cloud watch trigger to add or delete
+              instance
+            - schedule action: each friday
+        - predictive scaling
+            - predictive scaling: forcast the load and scale
+	
+        some Good metrics to scale on
+        - CPU utilization
+        - Req count per target
+        - av n/w in/out
+        - custom metric - via cloud watch	
+
+        Scaling cooldown
+        - helps metrics to stabilize 
+        - after scaling, ASG gets into cooldown period ( def 300 sec )
+        - during cooldown, ASG will not launch or terminate instance
+        - use ready to use AMI for faster start
+
+
 		What are my scaling options: (Exam Tips)
 			1. Maintain current instance levels at all times - Performs periodic health checks and launches a new one when an instance is unhealthy.
 			2. Scale Manually - the most basic way to scale your resources where you specify Min size, Desired Capacity, Max Size of your Auto Scaling group.
@@ -2403,9 +2854,6 @@ There is no charge for creating a placement group" and "The name of your placeme
 			   AWS Auto Scaling can help you maintain optimal availability and performance by combing predictive scaling and dynamic scaling (proactive and reactive, respectively)
 			   to scale your Amazon EC2 capacity faster.	
 			
-	** Launch Configurations and Auto Scaling Groups - Demo
-		- Create a Launch Configuration and then use Launch Configuration during Auto Scaling Group creation
-		- During Auto Scaling - there is warmup of 300 secs for new instances
 		
 	** HA Architecture
 		- Always Design for failure
@@ -2421,7 +2869,7 @@ There is no charge for creating a placement group" and "The name of your placeme
 		- CloudFormation is a way of completely scripting your cloud environment
 		- QuickStart is a bunch of CloudFormation templates already built by AWS Solutions Architects allowing you to create complex environments very quickly
 		
-	** Elastic Beanstalk - Lab (couple of questions in the exam)
+	** Elastic Beanstalk - Lab (couple of questions in t`he exam)
 		- With Elastic Beanstalk, you can quickly deploy and manage applications in the AWS cloud without worrying about the infrastructure that runs those applications.
 		  You simply upload your application, and Elastic Beanstalk automatically handles the details of capacity provisioning, load balancing, scaling and application health monitoring.
 		  
