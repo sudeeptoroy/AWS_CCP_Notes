@@ -278,9 +278,347 @@ Imp:
 	5. Can be used to replicate EFS to EFS.
 	6. AWS DataSync securely connects to Amazon S3, Amazon EFS or Amazon Fsx (Windows File Server)  to copy data and metadata to and from AWS.
 
+
+## S3
+
+use cases:
+    - backup and storage
+    - disaster recorvery
+    - Archive
+    - Hybrid Cloud Storage
+    - Application hosting
+    - Media hosting
+    - Data lake & big data analytics
+    - software dilivery
+    - static website
+
+buckets:
+    - store objects ( files ) in buckets
+    - buckets have unique name globally ( across regions )
+    - buckets are defined at the region level
+
+Object:
+    - Objects have a key
+    - key is the full name
+    prefix + onj name: s3://my-bucket/my-folder/another-folder/my-file.txt 
+    - value is the object value
+    - max object size : 5 TB ( 5000 GB )
+    - if uploading more than 5GB, must use "multi-part upload"
+    - tags( unicode key/value pair - up to 10 ) - useful for security /lifecycle
+    - version ID
+    - verisoning is done at bucket level
+        - any file not verioned prior to enabling versioning has version "null"
+        - suspending versioning does not delete the prev version
+        - this makes versioning safe. 
+
+Replication: ( CRR and SRR )
+    - CRR: cross region replication: Compliance. lower latency access,
+      replication across accounts
+    - SRR: same region repliation: log aggregation, live replciation between
+      prod and test accounts
+    - buckets can be in different AWS accounts
+    - copying is async
+    - must give proper IAM permissions to S3
+
+
+    - replciation works only when versioning is enabled. 
+    - after replicaiton is enabled, only new objects are replicated by default
+    - to replicate exiting obj use S3 batch replication
+        - replicates existing and failed obj
+
+    - for Delete operations
+        - can replciate delete marker from src to target
+        - Deletions with version ID are not replicated ( to avoid malicious
+          deletes)
+    - there is no chaining of replication
+        - B1 -> B2 and B2 -> B3
+        then onj created in bucket 1 are not replicated to bucket 3
+    
+
+S3 storage classes:
+    - S3 standard - GP
+    - Standard infrequent access - IA
+    - One zone-frequent access
+    - Glacier Instant retrieval
+    - Glacier flexible retrival
+    - Glacier Deep arcive
+    - Itelligent Tiering
+
+    can move between classes manually or using S3 lifecycle config
+
+Durability
+    - High durabiity ( 99.99999 9999%, 11 9's) of object across multiple AZ
+    - u can store 10,000,000 obj with S3 with av expectation to incur loss of a
+      single obj once every 10,000 years
+    - Same for all storage classes
+
+Availability
+    - measures how readily available a service is
+    - it depends on the storage class
+    - ex: 99.99% means 53 min not available in a year
+
+S3 Standard - GP
+    - 99.99%  availability
+    - used to freq accessed data
+    - low latency and high throughput
+    - sustain 2 concurrent facility failures
+
+    use cases: big data analytics, mobile & gaming app, content distribution
+
+S3 storage classes - Infrequent access
+    - data that is less freq accesed, but req rapid access when needed
+    - Lower cost than S3 standard
+
+AmazonS3 standard - infrequent access ( S3 standard - IA)
+    - 99.9% availability
+    - use cases: Disaster recovery backups
+
+Amazon S3 One zone-Infrequent Access ( S3 one zone - IA)
+    - high durable ( 99.99999 9999%) in a single AZ; data lost when AZ is
+      distroyed
+    - 99.5% Availability
+    - Use cases: Storing secondary backup copies of on-premise data, or data
+      you can recreate
+
+S3 Glacier storage classes
+    - Low-cost obj storage meant for archiving/backup
+    - pricing: price for storage + onj retrival cost
+
+Amazon S3 Glacier instant retrival
+    - milisecond retrival, great for data accessed once a quarter
+    - minimum storage duration of 90 days
+S3 Glacier flexible retrieval 
+    - expedited ( 1 to 5 min ), standard ( 3 to 5 hours ), bulk ( 5 to 12
+      hours) - free
+    -min storage duration of 90 days
+S3 Glacier Deep archive - for long term storage
+    - standard ( 12 hours), bulk ( 48 hours )
+
+S3 intelligent tiering
+    - small monthly monitoring and auto tiering feee
+    - moves obj automatically between access tiers based on usage
+    - there are no retrieval charges in S3 intelligent tiering
+
+freq access tier ( automatic ): def tier
+infrequent access tier ( automatic ): obj not accessed for 30 days
+archive instant access tier ( automatic): obj not accessed for 90 days
+archive access tier ( optional): configurable from 90 days to 700+ days
+deep archive access tier ( optional): config from 180 days to 700 + days
+
+Lifecycle rules
+    - transition action: configure obj to transition to another storage class
+
+Expiring action
+    - configure object to expire 9 ( delete ) after sometime
+        - access log delete after 365 days
+        - can delete old version of a file if versioning is enabled
+        - delete imcomplete multi-part uploads
+
+rules can be created for a certain prefix ( ex: s3://mybucket/mp3/*)
+rules can be created for certain obj tags ( eg: Department: Finance)
+
+S3 analytics - Storage class analysis
+    - recommendations for standard and standard IA
+        - does not work for One-Zone IA and Glacier
+    - report is updated daily
+    - 24 to 48 hours to start seeing data analysis
+
+S3 - requester pays
+    - network cost is paid by the one who downloads the file
+
+S3 event notification
+    - events can be generated and you can send them to 
+        - SNS
+        - SQS
+        - Lambda func
+
+    - events can take a sec to few mins
+    - Eventbridge integration with events help send notifition to 18 services
+    S3 -> events -> Eventbridge -> rules -> over 18 services
+    - advanced filtering option with json
+    - multiple dest - ex step func, Kinesis stream/firehose
+    - eventbridge capabilities - archive, replay , reliable delivery
+
+S3 Performance 
+    - latency 100-200 ms
+    - 3500 put/copy/post/del and 5500 get/head request per second per prefix
+      in bucket
+        ex: bucket/folder1/sub1/file => /folder1/sub1
+            bucket/folder1/sub2/file => /folder1/sub2
+
+    - multi-part upload
+        - recommended for files > 100 and must for file > 5GB
+        - parallel upload helps
+
+    - S3 transfer acceleration  
+        - increases transfer speed by transferring file to an AWS edge location
+          which will forward the data to the S3 bucket in the target region
+        - compatable with multi-part upload
+    - Byte range fetch
+        - parallelize get to requesting specific byte ranges
+        - better resilience in case of failure
+        - u can retrieve only partial data ( eg: head of the file)
+
+S3 select and Glacier Select
+    - retrive less data using SQL by performing server side filtering
+    - can filter by rows and columns
+    - less n/w transfer, less CPU cost client side
+
+S3 batch operations
+    - perform bulk operations on existing S3 obj with single request
+        - Modify obj metadata and properties
+        - copy obj between S3 buckets
+        - encrypt uncrypted obj
+        - modify ACL tags
+        - restore obj from S3 glacier
+        - invoke lampda func to perform custom action on each obj
+    - a job consist of list of obj, the action to perform and optional param
+    - S3 batch operations manages reties , track and send complete
+      notifcaitons, report
+    - You can use S3 inventory to get obj list and use S3 selct to filter your
+      obj
+
+S3 - Obj encryption
+    - server side encryption ( SSE )
+        - Server side encryption with amazon S3 managed key ( SSE-S3 )
+            - key, managed and owned by AWS
+            - encryption type - AES-256
+            - set header "x-amz-server-side-encryption": "AES256"
+        - Server side encryption with KMS stored in AWS KMS ( SSE-KMS)
+            - encyption key handeled and managed by AWS KMS
+            - user control + audit key usage using CloudTrail
+            - set header "x-amz-server-side-encryption": "AWS:KMS"
+            - you may be impacted by KMS limils as each upload n download is
+              going to make addional calls to KMS service
+            - this is going to get accounted towards KMS quota per sec ( based
+              on regions, 5500, 10000, 30000 req/s)
+            - you can request to increase quota using service quota console
+        - server side encryption with customer provided key ( SSE-C )
+            - keys fully managed by the customer outside of AWS
+            - AWS S3 do not store the encryption key
+            - HTTPS must be used
+            - encryption key should be passed in header everytime a HTTP requet
+              is made
+    - Client side encryption
+        - client should encrypted before sending to AWS
+
+Encryption in transit: HTTPs
+
+S3 default encryption vs bucket policy
+    - use bucket policy and refuse any API calls without the encryption header
+    - use a default encryption option in S3
+    - bucket policy are evaluated before default encryption 
+
+S3 Cors
+    - cross origin resource sharing
+    Origin : Scheme ( protocol ) + Host ( domain ) + port
+    eg: different origin : Http://example.com/app1 and http://other.example.com
+
+S3 - MFA Delete
+    - MFA will be req to:
+        - permanently delete an obj version
+        - suspend versioning on the bucket
+    - MFA wont be req to
+        - enable versioning
+        - list deleted version
+    - to use MFA delete, versioning must be enabled on the bucket
+    - only the bucket owner ( root account ) can enable/disable MFA delete
+
+S3 pre-signed URL: by using s3 console, AWS CLI and SDK
+    - S3 console: 1 min to 720 mins
+    - AWS CLI - configure expiration with - expires-n parameter in sec ( 3600
+      def, max 604800 secs - 168 hours)
+    - eg:   allow only logged user to download a file
+            generate unique url for a list a users
+            allow temp upload access to a user witout making the bucket public
+
+Glacier vault lock:
+    - WORM ( write once read many ) model
+    - create a vault lock policy
+    - lock policy for future edits
+    - helpful for compliance and data retention
+
+S3 Obj Lock ( versioning must be enabled)
+    - Adopt WORM model
+    - block an obj version delete for a specified amount of time
+    - retention mode - compliance:
+        - obj version cannot be overwtitten or deleted by any user including
+          root
+        - obj retension modes cannot be changed or shortend
+    - retention mode - governanvce:
+        - most user cannot overwrite or delete an obj version or alter its
+          lock setting
+        - some user have special rights to change the retension or delete of
+          the obj
+    - retension period: protect the obj for a fixed period, it can be extended
+    - legal hold:
+        - protect the obj indefinitely, indipemdent from retention period
+        - can be freely placed and removed using the s3:PutObjectlegalHold IAM
+          permission
+
+S3 - access point
+    - each access point gets its own DNS and policy to limit who can access it
+    - A specifig IAM user/group
+    - One policy per access point -> easier to manage than complex bucket
+      policies
+
+S3 Obj lambda
+    - lambda func to chane the obj befroe its retrived by the coller
+      application
+    -  On a S3 bucket we can create a S3 access and S3 obj lambda access point
+    - user cases
+        - redacting PII for analytices or non-prod env
+        - convert XML to Json, data formats
+        - resize or watermark unique to the user who is accessing
+
+Security:
+    - user based
+        IAM based: whcih api call should be allowed for which IAM user
+    - resource-based
+        bucket policies - bucket wide rules from the S3 console - allows cross
+account
+        object access control list: ( ACL ) - fine grain ( can be disabled )
+        bucket access contorl list: ( ACL ) - less common ( can be disabled )
+
+    An IAM principal can access an S3 obj if
+        - user IAM permissions ALLOW it OR the resouce policy ALLOWS it
+        - AND there's no explicit DENY
+    Encryption: encrypt obj in S3 using a ecryption key
+
+S3 Bucket policy
+
+- JSON based policy
+    - Resources: buckets and Obj
+    - Effect: Allow/Deny
+    - Actions: Set of API tp allow or deny
+    - princlipal: the account or user to apply the policy to
+- use S3 bucket policy to:
+    - Grant public access to the bucket
+    - force object to be encrypted to upload
+    - Grant access to another account ( Cross account )
+
+{
+    version: 2022-10-17,
+    statement: [
+        {
+            sid: publicread
+            effect: allow
+            principal: "*"
+            Action: [
+                "s3:GetOnject"
+            ],
+            Resource: [
+                "arn:aws:s3:::examplebucket/*"
+            ]
+        }
+    ]
+}
+
 * CloudFront
 
 	CloudFront is a content delivery network (CDN) is a system of distributed servers (network) that deliver webpages and other web content to a user based on the geographic locations of the user, the origin of the webpage and a content delivery server.
+
+216 Point of presence, content cached at edge
 
   CloudFront - Key Terminology:
 	1. Edge location: This is the location where content will be cached. This is separate to an AWS Region/AZ.
@@ -905,6 +1243,8 @@ Exam Tips:
 
 ** AWS Command Line (CLI) Lab
 
+when you dont specify a region the default region is us-east-1
+
 *Using the command line: Exam Tips:
 	1. You can interact with AWS in 3 different ways
 		a. Using the console
@@ -928,6 +1268,8 @@ Exam Tips:
 
 ** Instance Metadata - Demo
 	Used to get information about an instance (such as public ip)
+    metadata: Info about the Ec2 instance
+    userdata: launch script of the EC2 instance
 
 	In EC2: 
 	1. curl http://169.254.169.254/latest/user-data (stores bootstrap scripts)
