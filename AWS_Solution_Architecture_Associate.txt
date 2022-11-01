@@ -615,6 +615,124 @@ S3 Bucket policy
 }
 
 * CloudFront
+    - its a global service 
+
+    - CDN Service ( Content Delivery service )
+    - Improves read performance, content is cached at the edge
+    - 216 point of presence globally ( edge location )
+    - DDos protection, Integration with Shield, AWS web application firewall
+    - Can expose external HTTPS and can talk to internal HTTPS backends
+
+    Origins:
+    - S3 bucket
+        - for distributing files and caching them at the edge
+        - enhanced security with CloudFront Origin Access identity ( OAI )
+        - CloudFront can be used as an ingress ( to upload files to S3)
+    
+    - Custom Origin ( HTTP )
+        - Application LB
+        - EC2 instance
+        - S3 website ( must first enable the bucket as a static S3 website )
+        - any HTTP backend you want
+
+    How it works
+    - S3 as Origin
+        - client will sent request to edge location
+        - if edge has in cache it will reply else it will forward the request to
+          Origin
+        - Origin will check Origin Access Identity and S3 bucket policy
+        - if all is good, it will forward the information to edge. where it will be
+          cached.
+        - the content will not be served from here
+        - NOTE: the link betwen the edge and origin is a private link
+    - ALB or EC2 as origin
+        - EC2 instance must be public
+        - same architecture as above with jsut the firewall ( security group in
+          between )
+        - the secutrity group should allow access from the edge to the Origin
+          ( Ec2 or ALB )
+
+
+    CloudFront Geo restriction
+        - restrict who can access your distribution
+            - whitelist: allow users to access your content only if they are in
+              one of the countries on a list of approval conutries
+            - blacklist
+        - Country is determined by using 3rd party Geo-IP database
+        - Use case: Copyrigh laws to control access to content
+
+
+    diff between Cloud front and S3 cross region replication
+        - cloud front:
+            - Global edge n/w
+            - files are cached for a TTL
+            - Great for static content
+
+        - S3 cross region replication
+            - must be setup for each region you want replication to happen
+            - files are updated in near real time
+            - read only
+            - Great for dynamic content that needs to be available at low
+              latency in a few regions
+
+    Price Clases
+    - to reduce the number of edge locations for cost reduction
+        - three price classes
+        1. Price class all
+        2. price class 200: most regions, but exludes the most expensive
+regions
+        3. price class 100: only the least expense region
+
+    Cache Invalidation
+    - in case the backend origin is updated, the Cloudfront would not know the
+      new content till TTL. 
+    - to force the entire or partial cache refresh a cloudfront invalidation is
+      performed.
+    - you can invalidate all files ( * ) or a specific path ( /images/* )
+
+    AWS Global accelerator
+        - Unicast Ip vs Anycast IP
+        - it uses anycast ip
+        - it provides with 2 static Anycast IP to your applicaiton
+        - the Anycast IP send traffic directly to edge locations
+        - edge locations send the traffic to your application via Private Link
+          which is much faster than public internet access. 
+
+    - works with elastic IP. Ec3 instance, ALB, NLB, Public or private
+    - consistant performance 
+        - Intelligent routing to lower lantency and fast regional failover
+        - no issue with client caching as the ip do not change
+        - intenal AWS n/w
+    - health checks
+        - global accelerator performs a health check of your applicatios
+        - helps make your applicaiton global ( failover less than 1 min for
+          unhealthy)
+        - great for disaster recovery ( thanks to the health checks )
+    - security
+        - only 2 external IP need to be whitelisted
+        - DDoS protection via AWS shield
+
+    Global accelerator vs cloudfront
+        - they both use the AWS global nw and its edge locations around the
+          world
+        - both service intergates with AWS shield for DDoS protection
+        CloudFront:
+            - Improves performace for both cacheable content ( eg image and
+              videos)
+            - dynamic content ( API acceleration and dynamic site delevery )
+            - content is served at the edge
+
+        Global Accelerator
+            - Improves performace for a wide range of application over TCP and
+              UDP
+            - proxying packets at the edge to app reunning in one or more AWS
+              regions
+            - good fit for non-HTTP use case ( gaming(udp), IoT( MQTT) or voice
+              over IP)
+            - good for HTTP use cases that req static IP addresses
+            - good for HTTP use cases that req determistic, fast regional
+              failover
+
 
 	CloudFront is a content delivery network (CDN) is a system of distributed servers (network) that deliver webpages and other web content to a user based on the geographic locations of the user, the origin of the webpage and a content delivery server.
 
@@ -679,6 +797,84 @@ S3 Bucket policy
 	5. If your origin is S3, then use S3 signed URL instead of CloudFront Signed URL.
 
 * Snowball
+
+    Snow Family:
+        - Highly secure portable devices to collect and process data at the
+          edge and migrate data into and out of AWS
+        - if it takes more than a week to transfer over the nw, use snowball
+          devices
+        - Data migration:
+            - snowCone
+            - snowball edge
+            - snowmobile
+            use cases:
+                - limited connectivity
+                - limited bandwidth
+                - high n/w cost
+                - shared bandwidth ( cannot max the line)
+                - connection stability
+
+            
+        - edge computing
+            - snowcone
+            - snowball edge
+
+    - snowball edge for data transfers
+        - physical data tranport sol: move TBs or Pbs data in or out of AWS
+        - althernate to move data over the net
+        - pay per trasfer job
+        - provides block storage and amazon S3 campatible object storage
+        - snowball edge storage optimized
+            - 80 TB HDD capacity
+        - snowball edge compute optimized
+            - 42 TB of HDd capacity of block vol and S3 compatable obj storage
+        - use case: large data cloud migration, DC decom, disaster recovery
+
+    snowcone
+        - small portable computing, anyware, regged, secure
+        - light 4.5 pounds, 2.1 kg
+        - Device used for edge computing, storage and data transfer
+        - 8 TB of usable storage
+        - use snowcone where snowball does not fit ( space constrained )
+        - must provide your own battery and cable
+        - can be send to AWS offline or connect to net and use AWS DataSync to
+          send data
+    snowmobile:
+        - tranfer exabytes of data ( 1EB = 1000 PB = 1000000 TBs)
+        - each snowmobile has 100 PB of capacity
+        - High security: temp controlled, GPS, 24/7 video surveillance
+        - better than snowball if you rasfer more than 10 PB
+
+    Edge computing:
+        - snowball edge or snowcone are the service
+        - preprocess data
+        - machine learning at the edge
+        - transcoding media stream
+    - eventually the device can be shiped back to the AWS 
+
+    snowcode ( smaller )
+        - 2 CPU and 4 GB mem, wired and wireless access
+        - usb-c power using a cord or the optinal battery
+
+    snowball edge - compute optimized
+        - 53 vCPS, 208 Gib of RAM
+        - optional GPU
+        - 43 TB usagble storage
+    snowball edge - storage optimized 
+        - 40 vCPU and 80 Gib of RAM
+        - obj storage clustering available
+    All: can run Ec2 instance & AWs lambda func ( using AWS IoT green pass)
+    - long term deployment option: 1 or 3 years discunted prioc
+
+    AWS Opssub
+    - instead of using CLI now you can use a grapical overview
+    - software: Aws OpsHub
+
+snowball to Glacier
+    - snowball cannot directly import to glacier
+    - must use amazon s3 first, in combination with an S3 lifecycle policy
+
+
 	What is Snowball?
 		1. AWS Snowball is a PB-Scale data transport solution that uses secure appliances to transfer large amounts of data in and out of the AWS cloud. Think of it as a gigantic disk to move your data into AWS. Using Snowball addresses common challenges with large-scale data transfers including high network costs, long transfer times, and security concerns.
 Transferring data with snowball is simple, fast. Secure and can be as little as one-fifth the cost of high-speed internet. 
@@ -739,6 +935,25 @@ Exam Tips:
 			2. Cached Volumes: Entire Dataset is stored on S3 and the most frequently accessed data is cached on site.
 
 		c. Tape Gateway (VTL)
+
+Athena:
+    - Serverless query serivce to analyze data stored in S3
+    - uses standard SQL lang to query the file
+    - supports CSV, JSON, ORC, Avro and Parquet
+    - pricing $5 per TB of data scanned
+    - commonly used with Amazon Quicksight for reporting/dashboards
+
+    use case: Business intelligence/ analytics/ reporting, analyze & query VPC
+flow logs, ELB logs, cloudTrail trails, etc
+    - analyze data in S3 using Serverless SQL -> use Athena
+
+    performance improvements
+        - use columnar data for cost saving
+            - Apache Parquet or ORC is recommended
+            - use glue to convert data your Parquet or ORC
+        - Compress data
+        - partition datasets for easy queries
+        - use large files ( > 128 MB) to min overhead
 
 * Athena Vs Macie (Exam Tips)
 	- What is Athena?
@@ -1310,6 +1525,174 @@ when you dont specify a region the default region is us-east-1
 		6. Read After Write Consistency.
 	
 ** Amazon FSx for Windows and Amazon FSx for Lustre
+
+Amazon FSx - overview
+    - launch 3rd party high performance file system on AWS
+    - fully managed service
+        - FSx for Lustre
+        - FSx for NetApp ONTAP
+        - FSx for Windows File server
+        - FSx for OpenZFS
+
+Amazon FSx for Windows ( file server)
+    - FSx for Windows is fully managed Windows file system share drive
+    - Supports SMB protocol & Windows NTFS
+    - Microsoft Active Directory integration, ACLs, User quotas
+    - Can be mounted on Linux EC3 instances
+    - support Microsoft;s distributed file system ( DFS ) Namespaces ( group
+      files across multiple FS)
+
+    - Scales up to 10s of GB/s. millions of IOPS. 100 PB of data
+    - Storage options:
+        - SSD: latency sensitive workload ( database, media, data analytics)
+        - HDD: broad spectrum of workloads ( home dir, CMS)
+    - can be accessed from your on-primise infra ( VPN or Direct connect)
+    - can be configured to be multi-AZ ( high availability )
+    - data is backed-up daily to S3
+
+amazon FSx for Lustre
+    - Lustre is a type of parallel distributed file system for large-scale
+      compute
+    - linux + cluster = Lustre
+    - Machine learning, high performance computing ( HPC )
+    - video processing, financial modeling. electronic design automation
+    - scale up to 100s GB/s millions of IOPS, sub-ms latencies
+    - Storage Options:
+        - SSD: low latency, IOPS intersive worklaods, small and random file
+          operations
+        - HDD: throughput-intensive workload, large & sequential file
+          operations
+    - seamless integration with S3
+        - can "read S3" as a file system ( through FSx)
+        - can write the output of the computations back to S3 ( through FSx)
+    - can be used from on-premises servers ( VPN or direct connect)
+
+FSx filesystem deployment options
+    - scratch file system
+        - temp storage
+        - data is not replicated
+        - high burst ( 6x , 200 MBps per TiB)
+        - usage: short-term processing, optimize costs
+
+    - persistent file system
+        - long term storage
+        - data is replicated with same AZ
+        - replace failed files with minutes
+        - usage: long-term processing, sensitive data
+
+FSx for NetApp ONTAP
+    - managed NetApp OnTAP on AWS
+    - file system compatible with NFS, SNB, iSCSI protocol
+    - Move workload running on ONTAP or NAS to AWS
+    - works with:   
+        - linux, windows, MacOS, VMware Cloud on AWS, Amazon Workspaces &
+          AppStream 2.0, Amazon EC2, ECS, EKS
+    - storage shrinks or grows automatically
+    - snapshots, replication, low cost, compression and data de-duplication
+    - point in time instantaneous cloning ( helpful for testing new workloads)
+
+
+Amazon FSx for OpenZFS
+    - managed OpenZFS file system on AWS
+    - file syemtem compatible with NFS ( v3, v4, v4.1, v4.2)
+    - move workloads running on ZFS to AWS
+    - Works with:
+        - linux, windows, MacOS, VMware Cloud on AWS, Amazon Workspaces &
+          AppStream 2.0, Amazon EC2, ECS, EKS
+    - Up to 1,000,000 IOPS with < 0.5 ms latency
+    - Snapshots, compression and low-cost
+    - Point-in-time instantaneous cloning ( helpful for testing new workloads)
+
+
+Storage Gateways
+    S3 is proprietary storage tech ( unlike EFS/NFS), so how do you expose the
+S3 data on-premises?
+
+    Aws storage cloud native options
+    Block:
+        - Amazon EBS
+        - EC2 instance storage
+    File:
+        - Amazon EFS
+        - Amazon FSx
+    Object:
+        - amazon S3
+        - amazon Glacier
+
+    - bridge between on-premises data on cloud data
+    use cases:
+        - disaster recovery
+        - backup & restore
+        - tiered storage
+        - on-premises cache & low latency files access
+
+types of storage gateway
+    - S3 file gw
+    - FSx file gw
+    - volume gw
+    - tape gw
+
+amazon S3 file gw
+    - configured S3 buckets are accessable used the NFS and SMB protocol
+    - most recently used data is cached in the file gateway
+    - supports S3 standard,S3 Standard Ia, S3 one Zone A, S3 intelligent
+      Tiering
+    - transition to S3 glacier using a lifecycle policy
+    - bucket accessa using IAM roles for each file gateway
+    - SMB protocol has integration with Active Directlry for user
+      authentication
+
+Amazon FSx file gateway
+    - native access to amazon FSx for windows file server
+    - Local cache for freq accessd data
+    - Windows native compatable ( SMB, NTFS, Active dir)
+    - useful for group file shares and home dir
+
+volume Gateway
+    - Block storage using iSCSI protocol backed by S3
+    - Backed by EBS snapshot which can help restore on-premise volumes
+    - cached vol: low latency access to most recent data
+    - stored vol: entire dataset is on premise, scheduled backup to S3
+
+Tape gateway
+    - some comp have backup process using phy tapes
+    - virtual tape lib ( VTL) backed by amazon S3 and Glacier
+    - back up data using existing tape based processes ( and iSCSI interface)
+    - works with leading backup software vendors
+
+Hardware appliance
+    - in case you do not have hardware to run GW
+
+
+AWS transfer family
+    - A fully managed service for file transfer into and out of amazon S3 or
+      Amazon EFS using the FTP protocol
+    - supported Protocols
+        - AWS transfer for FTP
+        - AWS transfer for FTPS ( over SSL)
+        - AWS transfer for SFTP ( Secure FTP)
+    - managed infra, scalable, reliablem highly available ( multi-AZ)
+    - pay per provisioned endpoint per hour + data transfer in GB
+    - store and manage users cred within the service
+    - Integrate with existing auth system ( microsoft AD, LDAP, Okta, Amazon
+      Cognito, custom)
+    - usage: shared files, public datasets, CRM, ERP
+
+    user --> route 53 -> ( amazon transfer family, authentication ) --> IAM roles --> (Amazon S3 or EFS)
+
+AWS dataSync
+    - move large amount ot data to and from
+        - on premises/other cloud to AWS ( NFS, SMB, HDFS, S3 api) - need agent
+        - AWS to AWS ( diffferent storage service) - n agent needed
+    - can sync to:
+        - amazon S3 ( any storage class - including Glacier)
+        - amazon EFS
+        - Amazon FSx ( Windows, Lustre, NetApp, OpenZFs)
+    - replication task can be scheduled hourly, daily, weekly
+    - File permissions and metadata are preserved ( NFS POSIX, SMB) -- Imp
+    - One agent task can use 10 Gbps, you can set up a bandwidth limit
+
+
  
   1. Amazon Fsx for Windows File Server provides a fully managed native Microsoft Windows file system so you can easily move your Windows-based applications that require file storage to AWS. 
      Amazon FSx is built on Windows Server.
@@ -1502,6 +1885,31 @@ There is no charge for creating a placement group" and "The name of your placeme
 ==========================================================================================================================================================================================
 * Database 101
 ==========================================================================================================================================================================================
+
+Databases:
+Choosing the Right Database
+
+    - We have a lot of managed databases on AWS to choose from
+    - Questions to choose the right database based on your architecture: 
+    - Read-heavy, write-heavy, or balanced workload? Throughput needs? Will it change, does it need to scale or fluctuate during the day?
+    - How much data to store and for how long? Will it grow? Average object size? How are they accessed?
+    - Data durability? Source of truth for the data?
+    - Latency requirements? Concurrent users?
+    - Data model? How will you query the data? Joins? Structured? Strong schema? More flexibility? Reporting? Search? RDBMS / NOSQL?
+    - License costs? Switch to Cloud Native DB such as Aurora?
+
+    Database types
+    - RDBMS ( = SQL/ OLTP ): RDS, Aurora - great for joins
+    - NoSQL database: no join, no SQL: DynamoDB ( ~JSON), ElasticCache(
+      key/value pair), Neptune( graph ), DocumentDB ( for MongoDB), Keyspaces
+( for Apache Cassandra )
+    - Obj store: S3/Glacier
+    - Data warehouse ( = SQL Analytics/ BI): readshift ( olap), Athena, EMR
+    - Search: OpenSearch ( JSON ) - free text, unstrauctured searches
+    - Graphs: Amazon neptune - display relationship between data
+    - Ledger: Amazon Quantum Ledger Database
+    - time series: amazon timestream
+
 
 Amazon RDS Overview:
     - managed DB service for DB use SQL as query language.
@@ -3236,6 +3644,149 @@ or custom metric
 ==========================================================================================================================================================================================
 * Applications
 ==========================================================================================================================================================================================
+
+AWS and Integration & Messaging ( SQS, SNS, Kinesis )
+
+    - Decouple applications
+        SQS: Queue model
+        SNS: pub/sub model
+        Kinesis: real time streaming model
+        thses services can scale independently from the application
+
+SQS:
+    two choices:
+    - stanard
+    - FIFO
+
+    oldest offering - over 10 years
+    attributes:
+    - unlimited throughput, unlimited number of message in queue
+    - default retention of message: 4 days, max of 14 days, min 1 min
+    - low latency ( < 10 ms on pub and receive)
+    - limitation of 256KB per message sent
+    Can have duplicate message ( at least once delivery, occasionally )
+    can have out of order message ( best effort ordering )
+
+SQS - producing messages
+    - produces to SQS using SDK ( Send message API)
+    - SQS standard: unlimited throughput
+
+SQS consumers
+    - run code
+    - Ec2, server, AWS lambda
+    - poll SQS for messages ( receive upto 10 message at a time)
+    - process the message
+    - delete the message using the delete message API
+
+Multiple EC2 instance consumers
+    - consumers receive and process messages in parallel
+    - at least once delivery
+    - best effort message ordering
+    - consumers delete message after processing them
+    - we can scale consumers horizontally to improve throughput of processing
+    - SQS with auto scaling group
+        - use cloud watch on the message queue length and trigger ASG using
+          alarm
+
+Amazon SQS - security
+    1. Encryption:
+        - in flight encryption using HTTPs API
+        - at rest encryption using KMS
+        - client side encryption if the client wants to perfrom
+          encryption/decryption itself
+    2. Access controls: IAM policy to regulate across to the SQS api
+    3. SQS access policy ( similar to S3 bucket policies)
+        - useful for cross account access to SQS q
+        - useful for allowing other service ( SNS, S3 ) to write to a SQS queue
+
+message visibility timeout
+    - after a message is polled by a consumer the message becomes invisible to
+      other consumers
+    - def timeout = 30 sec
+    - after visibility timeout the message is visible again in SQS
+    - changeMessageVisibility is an API to get more time
+    - low or high visibility has consequences
+
+SQS - long polling
+    - when a consumer req messages from the queue it can optionally wait for
+      message to arrive if there are none in the q
+    - this is long polling
+    - Long polling decreses the no of API calls made to SQS while increasing
+      the efficiency and latency of your applicaition - imp
+    - wait time - 1 to 20 sec ( 20 is preferable)
+    - long polling is preferable to short poll
+    - long polling can be enabled at the queue level or at the APi level using
+      WaitTimeSeconds
+
+
+SQS - FIFO queue
+    SQS FIFO (First-In-First-Out) Queues have all the capabilities of the SQS Standard Queue, plus the following two features. First, The order in which messages are sent and received are strictly preserved and a message is delivered once and remains available until a consumer process and deletes it. Second, duplicated messages are not introduced into the queue.
+    - FIFO order , ordering of message in the q
+    - limited throughput: 300 msg/s without batching 3000 msg/s
+    - exactly once send capability ( by removing duplicates)
+    - messages are processed in order by the consumer
+
+
+SQS application
+    - ASG using cloudwatch and events
+    - buffer between app and db
+    - decouple between app tiers
+
+SNS
+    - how to send one message to many receiver
+    - pub/sub
+    - event producer only send message to one SNS topic
+    - subscriper of the topic will receive a copy of the message
+    - data is not persisted ( lost if not delivered)
+    - new - new feature to filter the message 
+    - upto 12,500,000 sub per topic
+    - 100,000 topic limit
+    - subscriber: sqs, lambda, kinesis data firestream ( not data steam ), email, sms & notification, http
+      endpoints
+
+SNS - how to publish
+    - topic publish ( using SDK )
+        - create a topic
+        - create a sub ( or many )
+        - publish to the topic
+
+    - direct public ( for mobile apps SDS )
+        - create a platform app
+        - create a platform endpoint
+        - publish to the platform endpoint
+        - works with Google GCM, Apple APNS, Amazon ADM.. 
+
+Amazon SNS - security
+    1. Encryption:
+        - in flight encryption using HTTPs API
+        - at rest encryption using KMS
+        - client side encryption if the client wants to perfrom
+          encryption/decryption itself
+    2. Access controls: IAM policy to regulate across to the SQS api
+    3. SQS access policy ( similar to S3 bucket policies)
+        - useful for cross account access to SQS q
+        - useful for allowing other service ( SNS, S3 ) to write to a SQS queue
+
+SNS + SQS : fan out
+    - push once to SNS -> receive in all SQS q that are subscribers
+    - full decoupled, nop data loss
+
+SNS - FIFO is exactly similar to SQS - FIFO
+    - Ordering by message group ID
+    - dedup using Deduplication ID or content based deduplication
+    - can only have SQS FIFO queue as subscriber
+    - EG: fan out + ordering + deduplication
+
+
+SNS - filering message
+    - JSON policy used to filter message send to SNS topic substriptions
+    - if a sub doesn't have a filter policy it wil receive all messages
+
+amazon MQ:
+    - is a managed message broker service for Rabbit MQ and Active MQ
+    - doesnt scale as much as SQS and SNS
+    - runs on servers, can run in multi-AZ with failover
+    - has both q and topic feature 
 	
 	** 	SQS
 		- Amazon SQS is a web service that gives you access to a message queue that can be used to store messages while waiting for a computer to process them
@@ -3340,6 +3891,82 @@ or custom metric
 		- CORS is enforced by the client (Browser)
 	
 	** Kinesis 101 (Streaming Data)
+
+Kinesis
+    - makes it easy to collect, process and analyze streaming data in real time
+    - ingest real-time data such as: application logs, metrics, website
+      clickstream, IOT telemetry data..
+    four services
+    1. Kinesis Data Streams: capture, process and store data streams
+    2. Kinesis Data Firehose: load data streams into AWS data stores
+    3. Kinesis Data analytics:  analyze data streams with SQL or apache flink
+    4. Kinesis Video streams: capture, process and store video streams
+
+Kinesis Data Stream - Capacity modes
+    provisioned mode:
+        - you choose the number of shards provisioned, scale manually or using
+          API
+        - each shard gets 1MB/s in ( or 1000 records per second)
+        - each shard gets 2MB/s out ( classic or enahnced fan out consumer)
+        - you pay per shard provisioned per hour
+
+    On demand mode:
+        - No need to provision or manage the capacity
+        - Default capacity provisioned ( 4 MB/s in or 4000 record per sec)
+        - scales automatically based on observed throughput peak during the
+          last 30 days
+        - pay per stream per hour and data in/out per GB
+
+Kinesis data stream security
+    - control access/aithrization using IAM policies
+    - encryption in flight using HTTPS
+    - rest using KMS
+    - supports client side encryption/decryption
+    - VPC endpoint available for Kinesis to access within VPC
+    - monitor API calls using CloudTrail
+
+Kinesis data firehose
+    - fully managed, no admision, auto scaling, serverless
+    - destination can be - imp
+        - AWS services
+            - S3
+            - amazon readshift ( copy through S3)
+            - Amazon Elasticsearch
+        - 3rd party
+            - datadog
+            - Splunk
+            - New relic
+            - mongoDB
+        - custom dest
+            - Http endpoint
+    - pay for data going through firehose
+    - near real time ( not real time)
+        - 60 sec latency min for non full batches
+        - or min 1 MB of data at a time
+    - supports many data format, conversions, transformations, compression
+    - supports custom data transformations using AWS lambda
+    - can send failed or all data to backup S3 bucket
+
+Kinesis data streams vs firehose
+    data stream:
+        - steraming service for ingest at scale
+        - write custom code ( producer/consumer)
+        - real time ( ~ 200 ms )
+        - managed scaling ( shard splitting/merging)
+        - data storage for 1 to 365 days
+        - supports replay capability
+
+    data firehose
+        - Load streaming data into S3/redshift/ES/3rd party/custom http
+        - fully managed
+        - near real time
+        - auto scaling
+        - no data storage
+        - doesn't support replay capability
+        - optional tranformation on data available ( lambda )
+
+
+
 		- Amazon Kinesis is a platform on AWS to send your streaming data to. Kinesis makes it easy to load and analyse streaming data, and also providing the ability to build your own 		  custom applications for your business needs.
 		
 		- 3 different types of Kinesis (Exam Tips)
